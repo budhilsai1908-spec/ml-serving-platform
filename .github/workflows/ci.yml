@@ -1,0 +1,67 @@
+name: CI/CD Pipeline
+
+# Run this pipeline on every push and pull request to the main branch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ---- JOB 1: Test the code ----
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -v
+
+  # ---- JOB 2: Build and push the Docker image ----
+  build-and-push:
+    needs: test                      # only runs if 'test' job passes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/sentiment-api:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/sentiment-api:${{ github.sha }}
+
+  # ---- JOB 3: Validate the Helm chart ----
+  validate-helm:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint the Helm chart
+        run: helm lint ./sentiment-chart
+
+      - name: Render the Helm templates
+        run: helm template sentiment ./sentiment-chart
