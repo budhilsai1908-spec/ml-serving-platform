@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sentiment-api
+  labels:
+    release: monitoring        # must match the Prometheus stack's release name
+spec:
+  selector:
+    matchLabels:
+      app: sentiment-api       # find Services with this label (your app)
+  endpoints:
+    - port: http               # scrape the named port
+      path: /metrics           # at this path
+      interval: 5s             # every 5 seconds

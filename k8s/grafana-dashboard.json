@@ -1,0 +1,50 @@
+{
+  "title": "Sentiment API - Serving Platform",
+  "tags": ["sentiment-api", "ml-serving"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum by (handler) (rate(http_requests_total{pod=~\"sentiment-api.*\"}[1m]))", "legendFormat": "{{handler}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "p95 Latency (seconds)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, handler) (rate(http_request_duration_seconds_bucket{pod=~\"sentiment-api.*\"}[5m])))", "legendFormat": "{{handler}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Running Pods",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "count(up{job=\"sentiment-api\"} == 1)", "legendFormat": "pods" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total Requests by Endpoint",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum by (handler) (http_requests_total{pod=~\"sentiment-api.*\"})", "legendFormat": "{{handler}}" }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}
