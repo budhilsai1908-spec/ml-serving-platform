@@ -49,6 +49,46 @@ flowchart TD
 
 ---
 
+## Security & Multi-Tenancy
+
+The platform runs as an isolated multi-tenant system with authenticated,
+secret-managed access.
+
+**Multi-tenant isolation** — the same Helm chart is deployed into per-tenant
+namespaces (`tenant-a`, `tenant-b`), each independently sandboxed:
+
+| Isolation layer | Mechanism | Verified by |
+|---|---|---|
+| Compute | `ResourceQuota` caps CPU / memory / pod count per namespace | quota rejects pods that omit resource limits |
+| Network | Calico `NetworkPolicy` (default-deny + same-namespace allow) | cross-tenant request returns `404` before the policy, times out after |
+
+> Network enforcement requires a CNI that honors NetworkPolicies; the cluster
+> is created with Calico (`disableDefaultCNI: true`) for this reason.
+
+**API authentication** — `/predict` requires a valid `X-API-Key` header and
+returns `401` otherwise. Probes (`/healthz`) and metrics (`/metrics`) stay open
+so Kubernetes and Prometheus keep working.
+
+**Secrets management** — the valid key is stored in a Kubernetes `Secret` and
+injected into the container as the `API_KEY` environment variable at runtime.
+It is never committed to the repo or baked into the image.
+
+```bash
+# Rejected: no key
+curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8080/predict \
+  -H "Content-Type: application/json" -d '{"text":"great"}'
+# 401
+
+# Allowed: valid key from the Secret
+curl -X POST http://localhost:8080/predict \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $MY_API_KEY" \
+  -d '{"text":"great"}'
+# {"sentiment":"positive","confidence":0.5}
+```
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
